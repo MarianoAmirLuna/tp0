@@ -16,7 +16,7 @@ void* serializar_paquete(t_paquete* paquete, int bytes)
 	return magic;
 }
 
-int crear_conexion(char *ip, char* puerto)
+int crear_conexion(char *ip, char *puerto)
 {
 	struct addrinfo hints;
 	struct addrinfo *server_info;
@@ -24,19 +24,35 @@ int crear_conexion(char *ip, char* puerto)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
+	/*
+	Esto vino con de base, pero no debería estar porque crearía un socket de escucha y no de conexion
 	hints.ai_flags = AI_PASSIVE;
+	*/
 
-	getaddrinfo(ip, puerto, &hints, &server_info);
+	// Obtener dirección del servidor
+    int resultado = getaddrinfo(ip, puerto, &hints, &server_info);
+    if (resultado != 0) {
+        fprintf(stderr, "Error en getaddrinfo: %s\n", gai_strerror(resultado));
+        return -1;
+    }
 
-	// Ahora vamos a crear el socket.
-	int socket_cliente = 0;
+    // Crear el socket
+    int fd_conexion = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
+    if (fd_conexion == -1) {
+        perror("Error al crear socket");
+        freeaddrinfo(server_info);
+        return -1;
+    }
 
-	// Ahora que tenemos el socket, vamos a conectarlo
-
+	int err = connect(fd_conexion, server_info->ai_addr, server_info->ai_addrlen);
+	if (err == -1) {
+        perror("Error al realizar la conexion");
+        return -1;
+    }
 
 	freeaddrinfo(server_info);
 
-	return socket_cliente;
+	return fd_conexion;
 }
 
 void enviar_mensaje(char* mensaje, int socket_cliente)
